@@ -1,0 +1,229 @@
+NSD OPERATION DAY04
+1：PHP的本地Session信息
+2：构建memcached服务
+3：LNMP+memcached
+4：PHP实现session共享
+
+
+Session：存储在服务器端，保存用户名、登陆状态等信息。
+Cookies：由服务器下发给客户端，保存在客户端的一个文件里
+
+                                    PHP的本地Session信息
+ 
+yum -y install gcc openssl-devel pcre-devel    //安装相关软件包
+
+ tar -xf nginx-1.12.2.tar.gz                   //源码安装Nginx
+
+make && make install                          //编辑并安装
+
+yum -y install  mariadb  mariadb-server  mariadb-devel     //安装MariaDB数据库
+
+yum -y install  php  php-mysql  php-fpm                    // 安装PHP
+
+ vim /usr/local/nginx/conf/nginx.conf                      //nginx配置文件
+
+location / {
+            root   html;                                    //添加网页
+            index  index.php  index.html   index.htm;       //添加默认首页
+        }
+ 
+        location  ~  \.php$  {
+          
+                     root           html;                   
+           
+                  fastcgi_pass   127.0.0.1:9000;
+           
+                  fastcgi_index  index.php;
+          
+ # fastcgi_param   SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+           
+                   include        fastcgi.conf;   //(去掉注释,该为conf即可)
+ 
+      systemctl stop  httpd                //如果该服务存在，则关闭该服务
+
+
+ systemctl start mariadb                //启动MySQL服务 (status查看状态)
+
+systemctl start  php-fpm               //启动PHP-FPM服务(status查看状态)
+             
+                           部署前端Nginx调度服务器
+
+yum  -y  install   gcc pcre-devel openssl-devel    //安装依赖包
+
+ tar -xf nginx-1.12.2.tar.gz                       //解源码包
+
+vim /usr/local/nginx/conf/nginx.conf                 //nginx位置文件
+
+upstream webs  {
+        server 192.168.2.100:80;
+        server 192.168.2.200:80;                ////定义源服务器组
+
+server  {
+          listen       80;
+          server_name  localhost;
+          location  /  {
+              proxy_pass http://webs;
+            root   html;
+            index  index.php index.html index.htm;
+                }
+/usr/local/nginx/sbin/nginx -s reload         // 刷新配置文件
+            
+
+                                     部署测试页面
+
+ cd lnmp_soft/php_scripts/                 //进去软件目录
+tar -xf php-memcached-demo.tar.gz          //解源码包
+cd php-memcached-demo                      //进入源码包
+php-memcached-demo]# cp -r  *  /usr/local/nginx/html/     //移动源码包到页面目录
+
+firefox http://192.168.2.100            //填写账户信息
+cd /var/lib/php/session/            //查看服务器本地的Session信息
+
+
+                                    构建memcached服务
+
+默认端口号是:11211
+memcached是高性能的分布式缓存服务器
+用来集中缓存数据库查询结果,减少数据库访问次数,以提高动态Web应用的相应速度
+
+
+add name 0 180 10	//变量不存在则添加
+set name 0 180 10	//添加或替换变量
+replace name 0 180 10	//替换
+get name	//读取变量
+append name 0 180 10	//向变量中追加数据
+delete name	//删除变量
+flush_all	//清空所有
+提示：0表示不压缩，180为数据缓存时间，10为需要存储的数据字节数量。
+
+yum -y  install   memcached               // 构建memcached服务
+
+vim /usr/lib/systemd/system/memcached.service   //  查看mencached配置文件
+
+systemctl  start  memcached                    //启动(status查看状态)
+
+firewall-cmd --set-default-zone=trusted        //设置区域为允许
+
+setenforce 0                                 //设置为临时宽松模式
+
+
+                                      使用telnet访问memcached服务器
+
+yum -y install telnet                //使用yum安装telnet
+
+telnet  192.168.4.5  11211
+
+0表示不压缩，180为数据缓存时间，3为需要存储的数据字节数量
+
+                               LNMP+memcached
+部署LNMP实现PHP动态网站架构
+为PHP安装memcache扩展
+创建PHP页面,并编写PHP代码,实现对memcached的数据操作
+
+vim /usr/local/nginx/html/mem.php               //php配置文件
+
+yum -y install  php-pecl-memcache              //  下载相关软件包
+
+systemctl restart php-fpm                   //刷新
+
+                                      PHP实现session共享
+ 
+yum -y install  php-pecl-memcache                 //需要的相关软件
+     
+vim  /etc/php-fpm.d/www.conf            //修改该配置文件的两个参数
+
+
+修改前效果如下:
+php_value[session.save_handler] = files
+
+php_value[session.save_path] = /var/lib/php/session
+
+//原始文件，默认定义Sessoin会话信息本地计算机（默认在/var/lib/php/session）
+
+修改后效果如下:
+
+php_value[session.save_handler] = memcache
+
+php_value[session.save_path] = "tcp://192.168.2.5:11211"
+
+//定义Session信息存储在公共的memcached服务器上，主机参数中为memcache（没有d）
+//通过path参数定义公共的memcached服务器在哪（服务器的IP和端口）
+
+
+systemctl  restart  php-fpm          //刷新
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
